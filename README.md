@@ -178,3 +178,4 @@ tests/           unit + integration (supertest)
 Dockerfile, docker-compose.yml, .env.example
  messaging-api.postman_collection.json
 ```
+## Note : Commenting out the Dozzle container because of some permission issues on my system as it's optional but a good web based container 
