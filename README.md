@@ -23,6 +23,7 @@ No `.env` file is needed (compose has local-dev defaults). Host ports `5433` (Po
 | Health | http://localhost:3000/health |
 | Container logs (Dozzle) | http://localhost:9999 |
 | BullMQ dashboard (Bull Board) | http://localhost:3000/admin/queues, login `admin` / `local-admin-change-me` |
+| Postman Collection | [Download JSON Collection](https://hiren14.github.io/hiren_lalani_nodejsBackendDev_JOBish_6354753667/Messaging%20Webhook%20API%20-%20full%20system%20test.postman_collection.json) |
 
 Data lives in Docker volumes, so messages survive restarts. `docker compose down -v` wipes them.
 
@@ -52,8 +53,7 @@ Covers: status transitions (incl. out-of-order), webhook ingest (new, duplicate,
 
 ### Full system test against the running stack
 
-- `bash system-test.sh` runs the whole flow (create, read, normal flow, duplicates, out-of-order, FAILED rules, webhook errors, pagination, tenant isolation, health) and prints PASS/FAIL. Needs `curl` and `jq`. `RESTART=1 bash system-test.sh` also checks persistence after `docker compose restart api worker`.
-- `messaging-api.postman_collection.json` is the same set of checks as a Postman collection. Import it, run folder **0. Setup** first, then the rest in order.
+- [messaging-api.postman_collection.json ](https://hiren14.github.io/hiren_lalani_nodejsBackendDev_JOBish_6354753667/Messaging%20Webhook%20API%20-%20full%20system%20test.postman_collection.json)  is the same set of checks as a Postman collection. Import it, run folder **0. Setup** first, then the rest in order.
 
 ## Authentication
 
@@ -158,6 +158,7 @@ See `.env.example` (placeholders only).
 
 **At high throughput:** put a real broker (Kafka/SQS) behind the webhook, partition by `messageId` for per-message ordering, shard Postgres by `tenant_id` (or use a distributed SQL DB), keep `event_id` uniqueness per shard, and add an outbox so "store event + publish" is atomic.
 
+##  Postman Collection | [Download JSON Collection](https://hiren14.github.io/hiren_lalani_nodejsBackendDev_JOBish_6354753667/Messaging%20Webhook%20API%20-%20full%20system%20test.postman_collection.json)
 ## Project layout
 
 ```
