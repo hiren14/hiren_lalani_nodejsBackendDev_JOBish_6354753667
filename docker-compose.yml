@@ -1,0 +1,98 @@
+# Everything runs in containers: `docker compose up --build`
+# No .env needed; the defaults below are for LOCAL DEVELOPMENT ONLY.
+x-app-env: &app-env
+  NODE_ENV: production
+  PORT: 3000
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  DATABASE_URL: postgres://postgres:postgres@postgres:5432/messaging
+  REDIS_URL: redis://redis:6379
+  JWT_SECRET: ${JWT_SECRET:-local-dev-jwt-secret-change-me-please}
+  JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1h}
+  PROVIDER_API_KEY: ${PROVIDER_API_KEY:-local-dev-provider-key-change-me}
+  ADMIN_USER: ${ADMIN_USER:-admin}
+  ADMIN_PASSWORD: ${ADMIN_PASSWORD:-local-admin-change-me}
+
+x-app-build: &app-build
+  build: .
+  image: messaging-api:local
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: messaging
+    ports:
+      - "5433:5432" # host port 5433 avoids clashing with a local Postgres
+    volumes:
+      - pgdata:/var/lib/postgresql  # Postgres 18+ image mounts here, not /data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d messaging"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:8-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6380:6379" # host port 6380 avoids clashing with a local Redis
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  migrate:
+    <<: *app-build
+    command: ["npm", "run", "migrate:prod"]
+    environment: *app-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    <<: *app-build
+    command: ["node", "dist/src/server.js"]
+    environment: *app-env
+    ports:
+      - "3000:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  worker:
+    <<: *app-build
+    command: ["node", "dist/src/worker.js"]
+    environment: *app-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Web UI for container logs: http://localhost:9999  (api, worker, postgres, redis ...)
+  # dozzle:
+  #   image: amir20/dozzle:latest
+  #   ports:
+  #     - "9999:8080"
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock:ro # read-only; local development only
+  #   restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:
